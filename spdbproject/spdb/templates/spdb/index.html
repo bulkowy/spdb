@@ -5,6 +5,8 @@
     crossorigin=""/>
     {% load static %}
     <link rel="stylesheet" type="text/css" href="{% static 'spdb/map.css' %}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="{% static 'spdb/osmtogeojson.js' %}"></script>
 </head>
 <body>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
@@ -15,19 +17,264 @@
 <div id="mapid"></div>
 <hr>
 <script>
+// Colored icons scripts
+    var blueIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-blue.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var goldIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-gold.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var redIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-red.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var greenIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-green.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var orangeIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-orange.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var yellowIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-yellow.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var violetIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-violet.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var greyIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-grey.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    var blackIcon = new L.Icon({
+        iconUrl: "{% static 'spdb/img/marker-icon-2x-black.png' %}",
+        shadowUrl: "{% static 'spdb/img/marker-shadow.png' %}",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    // Available Geometry Styles
+    var geo_styles = [
+        {icon: blueIcon, polygon: {fillColor: '#2A81CB', color: '#3274A3'}},
+        {icon: redIcon, polygon: {fillColor: '#CB2B3E', color: '#982E40'}},
+        {icon: greenIcon, polygon: {fillColor: '#2AAD27', color: '#31882A'}},
+        {icon: orangeIcon, polygon: {fillColor: '#CB8427', color: '#98652E'}},
+        {icon: yellowIcon, polygon: {fillColor: '#CAC428', color: '#988F2E'}},
+        {icon: violetIcon, polygon: {fillColor: '#9C2BCB', color: '#742E98'}},
+        {icon: greyIcon, polygon: {fillColor: '#7B7B7B', color: '#6B6B6B'}},
+        {icon: blackIcon, polygon: {fillColor: '#3D3D3D', color: '#313131'}},
+    ];
+
+    // Currently used Geometry Style
+    var geo_style_id = 0;
+
+    // Increment Geometry Style index
+    function inc_geo_style_id() {
+        geo_style_id = (geo_style_id + 1) % geo_styles.length;
+    }
+</script>
+
+<script>
+    // Initialize Map using Leaflet
     var mymap = L.map('mapid').setView([52.2366, 21.0030], 12);
+
+    // Add map engine from OpenStreetMap to Leaflet script
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			maxZoom: 18,
 			attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
 			id: 'mapbox/light-v9'
     }).addTo(mymap);
-    var marker = L.marker([52.2366, 21.0030]).addTo(mymap);
-    var popup = L.popup();
+
+    // Put centered marker in middle of map
+    var marker = L.marker([52.2366, 21.0030], {icon: goldIcon}).addTo(mymap);
+
+    // On every Map click, change location of main marker
     function onMapClick(e) {
         marker.setLatLng(e.latlng);
     }
-
     mymap.on('click', onMapClick);
+
+    // Function used for searching places and outputting them on map
+    function searchPlace(datatosend){
+        console.log('start');
+    
+        // Define URL, Headers and Data
+        const url = "api";
+        var headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        };  
+        var jss = JSON.stringify(datatosend);
+
+        // Send data to given URL
+        // And process received data
+        fetch(url,{
+            method: "POST",
+            headers: headers,
+            body: jss
+        })
+        .then(res=>res.json())
+        .then(json => {
+            callback(json);
+            inc_geo_style_id();
+            alert("Query ended successfully!")
+        }).catch(err => {
+            alert("Error occured during processing query: " + err);})
+    }
+
+    // Callback function used to output data retrieved from API
+    function callback(data){
+        // Choose Geometry Style
+        var geostyle = geo_styles[geo_style_id];
+
+        // Create Layer from given geoJSON with defined style
+        var geoJsonLayer = L.geoJSON(data, {
+            pointToLayer: function(feature, latlng) {
+                return L.marker(latlng, {icon: geostyle['icon']});
+            },
+            style: function(feature) {
+                return {
+                    fillColor: geostyle['polygon']['fillColor'],
+                    color: geostyle['polygon']['color'],
+                    opacity: feature.properties.opacity,
+                    fillOpacity: feature.properties.fillOpacity
+                }
+            }
+        });
+
+        // Add created layer to map
+        geoJsonLayer.addTo(mymap);
+
+        // geoJsonLayer.eachLayer(function(l) {
+        //     if (l instanceof L.Marker) {
+        //         L.circle(l.getLatLng(), 100, geostyle['polygon']).addTo(mymap);
+        //     }
+        // })
+    }
 </script>
+
+<!-- Form used for defining selected data for search -->
+<form name="searchForm" method="POST"> 
+    <div id="forms">
+        {{ form.as_p }}
+    </div>
+    <br/>Type / Distance<br/>
+    <button type="button" id="add-another">Add Condition</button>
+    <button type="button" id="remove-latest">Remove Latest Condition</button>
+    <input type="submit" value="Submit" onclick="return submitform()"> 
+</form> 
+<script>
+    // Submit Form function
+    function submitform() {
+        // Set Lat & Lng hidden fields to Lat & Lng of main marker
+        $("input[id='id_lat']").val(marker._latlng['lat']);
+        $("input[id='id_lng']").val(marker._latlng['lng']);
+        // Serialize data to Array
+        var formData = $('form[name="searchForm"]').serializeArray();
+        searchPlace(formData);
+        return false;
+    }
+
+</script>
+
+<script>
+    let form_count = Number($("[name=extra_field_count]").val());
+    // get extra form count so we know what index to use for the next item.
+    
+    $("#add-another").click(function() {
+        form_count ++;
+
+        $("#forms").append("<br/>")
+        // $("#forms").append("<br/>Attr " + form_count + "<br/>")
+
+        let outjson = [{"value": "", "text": "---"}];
+        let choicelist = [];
+        
+        {% for e, v in form.fields.items %}
+          {% if e == 'main_feature' %}
+            {% for l in v.choices %}
+              choicelist = [];
+              {% for choice in l %}
+                choicelist.push('{{choice}}');
+              {% endfor %}
+              outjson.push({
+                  "value": choicelist[0],
+                  "text": choicelist[1]
+              });
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+        let select = $("<select></select>").attr('id', 'extra_search_' + form_count).attr('name', 'extra_search_' + form_count)
+        $.each(outjson,function(index,outjson){
+            select.append($("<option></option>").attr("value", outjson.value).text(outjson.text));
+           }); 
+
+        $("#forms").append(select);
+    
+        let element = $('<input type="text"/>');
+        element.attr('name', 'extra_search_dist_' + form_count);
+        $("#forms").append(element);
+        // build element and append it to our forms container
+    
+        $("[name=extra_field_count]").val(form_count);
+        // increment form count so our view knows to populate 
+        // that many fields for validation
+    })
+
+    $("#remove-latest").click(function() {
+        // remove given elems from source
+        $("select[name='extra_search_" + form_count + "']").remove();
+        $("input[name='extra_search_dist_" + form_count + "']").remove();
+        form_count --;
+        if (form_count < 0) {form_count = 0;}
+        $("[name=extra_field_count]").val(form_count);
+    })
+    </script>
 </body>
 </html>
