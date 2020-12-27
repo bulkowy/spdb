@@ -44,10 +44,71 @@ class OverpassService:
         return qry
 
     def _createIDToNodeList(self):
-        pass
+        tempNodeJson = self.nodeJson
+        self.idNode = {}
+        test = []
+
+        for obj in self.mainJson['elements']:
+            if obj['type'] == 'relation':
+                continue
+            elif obj['type'] != 'node':
+                found, tempNodeJson = self._polygonGetFirstNode(obj, tempNodeJson)
+                self.idNode[found['id']] = {'lat': found['lat'], 'lon': found['lon']}
+                test.append(found)
+                tempNodeJson.remove(found)
+            else:
+                in_poly = False
+                for poly in self.polyJson:
+                    if obj['id'] in poly['nodes']:
+                        in_poly = True
+
+                if not in_poly:
+                    self.idNode[obj['id']] = {'lat': obj['lat'], 'lon': obj['lon']}
+                    test.append(obj)
+                    tempNodeJson.remove(obj)
+
+        return test
+
+    def _filterNodes(self, json):
+        json = list(filter(lambda elem: elem['type'] == 'node', json))
+        return json
+
+    def _filterPolys(self, json):
+        json = list(filter(lambda elem: elem['type'] not in ['node', 'relation'], json))
+        return json
+
+    def _polygonGetFirstNode(self, polygon, json):
+        out = {}
+        to_remove = []
+        for node in json:
+            if node['id'] == polygon['nodes'][0] and not out:
+                out = node
+
+            if node['id'] in polygon['nodes'][1:-1]:
+                to_remove.append(node)
+        
+        for node in to_remove:
+            json.remove(node)
+
+        return out, json
+
+        
 
     def query(self, body):
         qry = self._prepareMainQuery(body)
         r = requests.get(self.endpoint, params={'data': qry})
-        self.mainObjects = osmtogeojson.process_osm_json(r.json())
+        self.mainJson = r.json()
+        
+        import pprint
+        pp = pprint.PrettyPrinter(indent=2)
+        #pp.pprint(self.mainJson)
+
+        self.nodeJson = self._filterNodes(self.mainJson['elements'])
+        self.polyJson = self._filterPolys(self.mainJson['elements'])
+        #pp.pprint(self.nodeJson)
+        
+        self.mainObjects = osmtogeojson.process_osm_json(self.mainJson)
+        test = self.mainJson
+        test['elements'] = self._createIDToNodeList()
+        test = osmtogeojson.process_osm_json(test)
         return self.mainObjects
