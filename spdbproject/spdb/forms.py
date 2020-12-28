@@ -32,10 +32,17 @@ SEARCH_TYPE = (
     ("time", "time (minutes)"),
 )
 
+LOGIC_FUNCTION = {
+    ("OR", "OR"),
+    ("AND", "AND"),
+}
+
 class SearchForm(forms.Form):
     main_feature = forms.ChoiceField(choices = FEATURES)
     search_type = forms.ChoiceField(choices = SEARCH_TYPE)
     value = forms.FloatField()
+    distance_bound_percentage = forms.FloatField(min_value=0.0, max_value=100.0)
+    extra_fields_logic_function = forms.ChoiceField(choices = LOGIC_FUNCTION)
     lat = forms.FloatField(widget = forms.HiddenInput())
     lng = forms.FloatField(widget = forms.HiddenInput())
     extra_field_count = forms.CharField(widget=forms.HiddenInput())
