@@ -111,6 +111,8 @@
         {icon: blackIcon, polygon: {fillColor: '#3D3D3D', color: '#313131'}},
     ];
 
+    var gold_style = {icon: goldIcon, polygon: {fillColor: '#FFD326', color: '#C1A32D'}};
+
     // Currently used Geometry Style
     var geo_style_id = 0;
 
@@ -168,6 +170,16 @@
             alert("Error occured during processing query: " + err);})
     }
 
+    function forEachFeature(feature, layer) {
+        var popupContent = "<p> ";
+        for (var key in feature.properties) {
+            popupContent += ("</br>* " + key + " : " + feature.properties[key])
+        }
+        popupContent += "</p>"
+
+        layer.bindPopup(popupContent);
+    }
+
     // Callback function used to output data retrieved from API
     function callback(data){
         // Choose Geometry Style
@@ -178,6 +190,7 @@
             pointToLayer: function(feature, latlng) {
                 return L.marker(latlng, {icon: geostyle['icon']});
             },
+            onEachFeature: forEachFeature,
             style: function(feature) {
                 return {
                     fillColor: geostyle['polygon']['fillColor'],
@@ -190,12 +203,27 @@
 
         // Add created layer to map
         geoJsonLayer.addTo(mymap);
+        var circle_radius = $("input[id='id_value']").val();
+        if ($("select[id='id_search_type']").val() == 'time') {
+            circle_radius = circle_radius * 140000 / 60;
+        }
+        var main_style = gold_style['polygon']
+        var geostyle = {};
+        main_style['radius'] = circle_radius;
 
-        // geoJsonLayer.eachLayer(function(l) {
-        //     if (l instanceof L.Marker) {
-        //         L.circle(l.getLatLng(), 100, geostyle['polygon']).addTo(mymap);
-        //     }
-        // })
+        L.circle(marker.getLatLng(), main_style).addTo(mymap);
+        for (var i = 1; i <= form_count; i++) {
+            geostyle = geo_styles[geo_style_id]['polygon'];
+            console.log($("input[name='extra_search_dist_" + i + "']").val());
+            geostyle['radius'] = $("input[name='extra_search_dist_" + i + "']").val();
+            geoJsonLayer.eachLayer(function(l) {
+                if (l instanceof L.Marker && l != marker) {
+                    L.circle(l.getLatLng(), geostyle).addTo(mymap);
+                }
+            })
+            inc_geo_style_id();
+        }
+        
     }
 </script>
 

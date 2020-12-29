@@ -93,7 +93,7 @@ class OverpassService:
         '''
         tempNodeJson = copy.deepcopy(self.nodeJson)
         self.idNode = {}
-        self.processed = []
+        # self.processed = []
         out = []
 
         for obj in self.mainJson['elements']:
@@ -106,6 +106,8 @@ class OverpassService:
                 found, tempNodeJson = self._polygonGetFirstNode(obj, tempNodeJson)
                 if not found:
                     continue
+                if 'tags' in obj.keys():
+                    found['tags'] = obj['tags']
                 self.idNode[found['id']] = {'lat': found['lat'], 'lon': found['lon']}
                 out.append(found)
                 tempNodeJson.remove(found)
@@ -145,30 +147,31 @@ class OverpassService:
         Remove rest of Polygon nodes from temporary container
         '''
         out = {}
-        to_remove = []
+        # to_remove = []
 
         for node in data:
             if node['id'] == polygon['nodes'][0] and not out:
                 out = node
+                break
+            
+            # if node['id'] in polygon['nodes'][1:-1]:
+            #     to_remove.append(node)
 
-            if node['id'] in polygon['nodes'][1:-1]:
-                to_remove.append(node)
+        # if out:
+        #     for poly in self.polyJson:
+        #         if poly['id'] == polygon['id'] or poly['id'] in self.processed:
+        #             continue
 
-        if out:
-            for poly in self.polyJson:
-                if poly['id'] == polygon['id'] or poly['id'] in self.processed:
-                    continue
+        #         nodes = poly['nodes']
+        #         not_remove = []
+        #         for node in to_remove:
+        #             if node['id'] in nodes:
+        #                 to_remove.remove(node)
 
-                nodes = poly['nodes']
-                not_remove = []
-                for node in to_remove:
-                    if node['id'] in nodes:
-                        to_remove.remove(node)
+        #     for node in to_remove:
+        #         data.remove(node)
 
-            for node in to_remove:
-                data.remove(node)
-
-        self.processed.append(polygon['id'])
+        # self.processed.append(polygon['id'])
 
         return out, data
 
@@ -254,26 +257,27 @@ class OverpassService:
 
         for obj in mainObjs:
             if obj['type'] == 'relation':
-                out.append(obj)
+                # out.append(obj)
+                continue
             elif obj['type'] == 'node':
                 if obj['id'] not in self.idNode.keys():
                     continue
 
-                in_poly = False
-                for poly in self.polyJson:
-                    if obj['id'] in poly['nodes']:
-                        out.append(poly)
-                        nodes_to_add.extend(poly['nodes'])
-                        in_poly = True
-                        continue
+                # in_poly = False
+                # for poly in self.polyJson:
+                #     if obj['id'] in poly['nodes']:
+                #         out.append(poly)
+                #         nodes_to_add.extend(poly['nodes'])
+                #         in_poly = True
+                #         continue
 
-                if not in_poly:
-                    out.append(obj)
+                # if not in_poly:
+                out.append(obj)
         
-        for node in nodes_to_add:
-            for nodeObj in self.nodeJson:
-                if node == nodeObj['id']:
-                    out.append(nodeObj)
+        # for node in nodes_to_add:
+        #     for nodeObj in self.nodeJson:
+        #         if node == nodeObj['id']:
+        #             out.append(nodeObj)
 
         return out
 
@@ -310,17 +314,18 @@ class OverpassService:
 
         self.nodeJson = self._filterNodes(self.mainJson['elements'])
         self.polyJson = self._filterPolys(self.mainJson['elements'])
+        self.mainJson['elements'] = self._createIDToNodeList()
         
         if self.search_type == 'time' or self.extra_count > 0:
-            idnode_out = self._createIDToNodeList()
             self._filterByExtra()
             if self.search_type == 'time':
                 self._filterByTime()
 
             self.mainJson['elements'] = self._getMainFiltered()
-            self._filterRelation()
+            # self._filterRelation()
         
-        pp.pprint(self.mainJson)
+        #pp.pprint(self.mainJson)
         
         self.mainObjects = osmtogeojson.process_osm_json(self.mainJson)
+        pp.pprint(self.mainObjects)
         return self.mainObjects
