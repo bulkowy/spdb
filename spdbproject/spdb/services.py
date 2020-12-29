@@ -19,7 +19,10 @@ class OverpassService:
         '''
         Make Query to OverPass API based on passed query param
         '''
-        return requests.get(self.endpoint, params={'data': query}).json()
+        try:
+            return requests.get(self.endpoint, params={'data': query}).json()
+        except:
+            return {'elements': []}
 
     def _resolveTags(self, feature):
         '''
@@ -90,6 +93,7 @@ class OverpassService:
         '''
         tempNodeJson = copy.deepcopy(self.nodeJson)
         self.idNode = {}
+        self.processed = []
         out = []
 
         for obj in self.mainJson['elements']:
@@ -100,6 +104,8 @@ class OverpassService:
             # retrieve first node of polygon and put it in containers
             elif obj['type'] != 'node':
                 found, tempNodeJson = self._polygonGetFirstNode(obj, tempNodeJson)
+                if not found:
+                    continue
                 self.idNode[found['id']] = {'lat': found['lat'], 'lon': found['lon']}
                 out.append(found)
                 tempNodeJson.remove(found)
@@ -140,15 +146,29 @@ class OverpassService:
         '''
         out = {}
         to_remove = []
+
         for node in data:
             if node['id'] == polygon['nodes'][0] and not out:
                 out = node
 
             if node['id'] in polygon['nodes'][1:-1]:
                 to_remove.append(node)
-        
-        for node in to_remove:
-            data.remove(node)
+
+        if out:
+            for poly in self.polyJson:
+                if poly['id'] == polygon['id'] or poly['id'] in self.processed:
+                    continue
+
+                nodes = poly['nodes']
+                not_remove = []
+                for node in to_remove:
+                    if node['id'] in nodes:
+                        to_remove.remove(node)
+
+            for node in to_remove:
+                data.remove(node)
+
+        self.processed.append(polygon['id'])
 
         return out, data
 
@@ -200,11 +220,11 @@ class OverpassService:
 
     # -- filter by time --
     def _isInDistBoundary(self, endpoint):
-        return utils.calculateDist({self.lat, self.lon}, endpoint) <= (self.dist_bound / 100) * self.value
+        return utils.calculateDist({'lat': self.lat, 'lon': self.lon}, endpoint) <= (float(self.dist_bound) / 100) * float(self.value)
 
     def _isTimeCorrect(self, data):
-        time = int(data['paths'][0]['time']) # ms
-        targetTime = self.time * 60000 # min * 60 s/min * 1000 ms/s
+        time = float(data['paths'][0]['time']) # ms
+        targetTime = float(self.time) * 60000 # min * 60 s/min * 1000 ms/s
         return time < targetTime
 
     def _makeGraphhopperQuery(self, data):
@@ -256,6 +276,29 @@ class OverpassService:
                     out.append(nodeObj)
 
         return out
+
+    def _filterRelation(self):
+        ids = [obj['id'] for obj in self.mainJson['elements']]
+        relationsToRemove = []
+        for obj in self.mainJson['elements']:
+            if obj['type'] != 'relation':
+                continue
+            
+            membersToRemove = []
+            for member in obj['members']:
+                if member['ref'] not in ids:
+                    membersToRemove.append(member)
+            
+            for member in membersToRemove:
+                obj['members'].remove(member)
+
+            if len(obj['members']) == 0:
+                relationsToRemove.append(obj)
+
+        for relation in relationsToRemove:
+            self.mainJson['elements'].remove(relation)
+
+
                     
     def query(self, body):
         self._resolveRequestBody(body)
@@ -275,10 +318,9 @@ class OverpassService:
                 self._filterByTime()
 
             self.mainJson['elements'] = self._getMainFiltered()
+            self._filterRelation()
         
         pp.pprint(self.mainJson)
+        
         self.mainObjects = osmtogeojson.process_osm_json(self.mainJson)
-        #test = self.mainJson
-        #test['elements'] = self._createIDToNodeList()
-        #test = osmtogeojson.process_osm_json(test)
         return self.mainObjects
