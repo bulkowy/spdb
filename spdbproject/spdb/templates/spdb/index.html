@@ -171,6 +171,8 @@
     }
 
     function forEachFeature(feature, layer) {
+        // For every marker allow rendering Popup after clicking on it
+        // Popup contains basic information retrieved from geoJSON
         var popupContent = "<p> ";
         for (var key in feature.properties) {
             popupContent += ("</br>* " + key + " : " + feature.properties[key])
@@ -203,24 +205,39 @@
 
         // Add created layer to map
         geoJsonLayer.addTo(mymap);
+
+        // Calculate main query circle radius
         var circle_radius = $("input[id='id_value']").val();
         if ($("select[id='id_search_type']").val() == 'time') {
             circle_radius = circle_radius * 140000 / 60;
         }
+
+        // Set style of main query circle
         var main_style = gold_style['polygon']
         var geostyle = {};
         main_style['radius'] = circle_radius;
 
+        // Create main query circle
         L.circle(marker.getLatLng(), main_style).addTo(mymap);
+
+        // For every additional requirement
         for (var i = 1; i <= form_count; i++) {
+
+            // Set style for it
             geostyle = geo_styles[geo_style_id]['polygon'];
             console.log($("input[name='extra_search_dist_" + i + "']").val());
+
+            // Calculate its' circle radius
             geostyle['radius'] = $("input[name='extra_search_dist_" + i + "']").val();
+
+            // For every marker (except main one) create circle with given style
             geoJsonLayer.eachLayer(function(l) {
                 if (l instanceof L.Marker && l != marker) {
                     L.circle(l.getLatLng(), geostyle).addTo(mymap);
                 }
             })
+
+            // Increment style ID
             inc_geo_style_id();
         }
         
@@ -264,6 +281,7 @@
         let outjson = [{"value": "", "text": "---"}];
         let choicelist = [];
         
+        // Create form of additional fields
         {% for e, v in form.fields.items %}
           {% if e == 'main_feature' %}
             {% for l in v.choices %}

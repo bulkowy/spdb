@@ -4,8 +4,10 @@ import geojson
 import json
 from . import services, forms, utils
 
-# Create your views here.
 def index(request):
+    '''
+    Main view which is in charge of rendering map and form with data that will be passed to service
+    '''
     if request.method == 'POST':
         form = forms.SearchForm(request.POST, extra=request.POST.get('extra_field_count'))
     else:
@@ -15,8 +17,14 @@ def index(request):
 
 
 def getMap(request):
+    '''
+    Service endpoint
+    '''
+
+    # load and convert request body to Python dict
     body = json.loads(request.body)
     body = utils.toPythonDict(body)
+
+    # retrieve GeoJSON from services response
     srv = geojson.dumps(services.OverpassService().query(body))
-    #if request.method == 'POST':
     return HttpResponse(srv)

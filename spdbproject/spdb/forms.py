@@ -1,5 +1,6 @@
 from django import forms
 
+# Possible combinations (OverPass Tags, Description)
 FEATURES = (
     ("amenity/bar", "bar"),
     ("amenity/restaurant", "restaurant"),
@@ -27,11 +28,13 @@ FEATURES = (
     ("highway/bus_stop", "bus_stop"),
 )
 
+# Possible combinations of search type
 SEARCH_TYPE = (
     ("distance", "distance (meters)"),
     ("time", "time (minutes)"),
 )
 
+# Possible extra field logic
 LOGIC_FUNCTION = {
     ("OR", "OR"),
     ("AND", "AND"),
@@ -48,11 +51,20 @@ class SearchForm(forms.Form):
     extra_field_count = forms.CharField(widget=forms.HiddenInput())
 
     def __init__(self, *args, **kwargs):
+        # get information if there are any extra fields defined in view
         extra_fields = kwargs.pop('extra', 0)
+
         super(SearchForm, self).__init__(*args, **kwargs)
+        
+        # initialize `extra_field_count` with count of extra fields 
         self.fields['extra_field_count'].initial = extra_fields
 
+        # for every extra field
         for idx in range(int(extra_fields)):
+            
+            # retrieve Overpass tags
             self.fields['extra_search_{}'.format(idx)] = forms.ChoiceField(choices = FEATURES)
+
+            # retrieve search radius for given tags
             self.fields['extra_search_dist_{}'.format(idx)] = forms.FloatField()
 

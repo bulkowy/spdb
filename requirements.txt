@@ -1,2 +1,4 @@
 django
 osmtogeojson
+geojson
+requests
